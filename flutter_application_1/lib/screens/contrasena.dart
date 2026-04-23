@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:gestor_de_herramientas/screens/login_screen.dart';
 
 class Contrasena extends StatefulWidget {
   const Contrasena({super.key});
@@ -8,6 +10,13 @@ class Contrasena extends StatefulWidget {
 }
 
 class _ContrasenaState extends State<Contrasena> {
+  final TextEditingController _emailController = TextEditingController();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
   final _formKey = GlobalKey<FormState>();
   @override
   Widget build(BuildContext context) {
@@ -38,6 +47,7 @@ class _ContrasenaState extends State<Contrasena> {
               ),
               const SizedBox(height: 50),
               TextFormField(
+                controller: _emailController,
                 style: TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Correo Electrónico',
@@ -54,30 +64,57 @@ class _ContrasenaState extends State<Contrasena> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        content: Text(
-                          'Recibirá un correo electrónico con instrucciones para restablecer su contraseña. Si no le llega, asegúrese de revisar su carpeta de correo no deseado.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Aceptar'),
-                          ),
-                        ],
-                      ),
-                    );
+                    _restablecerPassword();
                   }
                 },
-                child: const Text('Restablecer Contraseña'),
+                child: const Text("Restablecer contraseña"),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _restablecerPassword() async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          content: const Text(
+            'Se envió un correo con instrucciones para restablecer tu contraseña.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyCustomForm()),
+                  (route) => false,
+                );
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al enviar el correo"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

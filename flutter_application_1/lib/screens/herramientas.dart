@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gestor_de_herramientas/screens/FormReport.dart';
+import 'package:gestor_de_herramientas/screens/perfil.dart';
 import 'package:gestor_de_herramientas/screens/qr.dart';
 
 String idHerramienta = '';
@@ -23,12 +25,32 @@ class _HerramientasState extends State<Herramientas> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF1F2C34),
-      ),
 
+        actions: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PerfilUsuario()),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(
+                  FirebaseAuth.instance.currentUser?.photoURL ??
+                      "https://i.pravatar.cc/150",
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               itemCount: nueva.length,
               itemBuilder: (context, index) {
                 return Padding(
@@ -123,7 +145,7 @@ class _HerramientasState extends State<Herramientas> {
             setState(() {});
           });
         },
-        child: Icon(Icons.qr_code_outlined, color: Colors.black),
+        child: Icon(Icons.qr_code_outlined, color: Colors.white),
       ),
     );
   }

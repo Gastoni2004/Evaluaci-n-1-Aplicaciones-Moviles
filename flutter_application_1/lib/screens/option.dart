@@ -25,6 +25,7 @@ class _PrincipalState extends State<Principal> {
       backgroundColor: const Color(0xFF0B141B),
       body: _paginas[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.white,
         backgroundColor: const Color(0xFF1F2C34),
         currentIndex: _currentIndex,
         onTap: (int index) {
