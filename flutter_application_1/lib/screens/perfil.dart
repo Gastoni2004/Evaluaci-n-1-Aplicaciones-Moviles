@@ -12,7 +12,6 @@ class PerfilUsuario extends StatefulWidget {
 }
 
 class _PerfilUsuarioState extends State<PerfilUsuario> {
-  //Usamos los nombres que tú les pusiste
   String nombre = "";
   String email = "";
   String telefono = "";
@@ -23,32 +22,32 @@ class _PerfilUsuarioState extends State<PerfilUsuario> {
     cargarDatos();
   }
 
-  void cargarDatos() {
+  void cargarDatos() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    setState(() {
-      nombre = user.displayName ?? "Sin nombre";
-      email = user.email ?? "";
-    });
-    FirebaseFirestore.instance
-        .collection("usuarios")
-        .doc(user.uid)
-        .get()
-        .then((doc) {
-          if (doc.exists && mounted) {
-            setState(() {
-              nombre = doc.data()?['nombre'] ?? nombre;
-              telefono = doc.data()?['telefono'] ?? "Sin fono";
-            });
-          }
-        })
-        .catchError((e) {
-          debugPrint("Firestore no disponible: $e");
-        });
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection("usuarios")
+          .doc(user.uid)
+          .get();
+
+      if (!mounted) return;
+
+      setState(() {
+        nombre = doc.data()?['nombre'] ?? "Sin nombre";
+        telefono = doc.data()?['telefono'] ?? "Sin teléfono";
+        email = user.email ?? "";
+      });
+    } catch (e) {
+      debugPrint("Error cargando perfil: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -59,25 +58,55 @@ class _PerfilUsuarioState extends State<PerfilUsuario> {
       ),
 
       body: Padding(
-        padding: const EdgeInsets.all(100),
+        padding: const EdgeInsets.all(50),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 70,
               backgroundImage: NetworkImage(
-                FirebaseAuth.instance.currentUser?.photoURL ??
-                    "https://i.pravatar.cc/150",
+                user?.photoURL ?? "https://i.pravatar.cc/150",
               ),
             ),
 
-            const SizedBox(height: 50),
+            const SizedBox(height: 30),
 
-            Text("Usuario: $nombre"),
+            Text(
+              "Usuario: $nombre",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
             const SizedBox(height: 10),
-            Text("Email: $email"),
+
+            Text(
+              "Email: $email",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
             const SizedBox(height: 10),
-            Text("Teléfono: $telefono"),
-            const SizedBox(height: 10),
+
+            Text(
+              "Teléfono: $telefono",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
+            const SizedBox(height: 30),
 
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -88,22 +117,22 @@ class _PerfilUsuarioState extends State<PerfilUsuario> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const EditarPerfil()),
-                ).then((value) {
+                ).then((_) {
                   cargarDatos();
                 });
               },
               icon: const Icon(Icons.edit),
-              label: const Text(
-                "Editar perfil",
-                style: TextStyle(color: Colors.white),
-              ),
+              label: const Text("Editar perfil"),
             ),
+
+            const SizedBox(height: 10),
+
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () => cerrarSesion(),
+              onPressed: cerrarSesion,
               icon: const Icon(Icons.logout),
               label: const Text("Cerrar Sesión"),
             ),

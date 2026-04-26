@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gestor_de_herramientas/screens/option.dart';
 
 class EditarPerfil extends StatefulWidget {
   const EditarPerfil({super.key});
@@ -32,7 +31,9 @@ class _EditarPerfilState extends State<EditarPerfil> {
         .then((doc) {
           if (!mounted) return;
 
-          _phoneController.text = doc.data()?['telefono'] ?? "";
+          setState(() {
+            _phoneController.text = doc.data()?['telefono'] ?? "";
+          });
         })
         .catchError((e) {
           print("ERROR AL CARGAR EDITAR: $e");
@@ -43,27 +44,58 @@ class _EditarPerfilState extends State<EditarPerfil> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    await FirebaseFirestore.instance.collection("usuarios").doc(user.uid).set({
-      "nombre": _nameController.text.trim(),
-      "telefono": _phoneController.text.trim(),
-      "email": user.email,
-    }, SetOptions(merge: true));
+    FocusScope.of(context).unfocus();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
-    if (!mounted) return;
+    try {
+      print("Guardando en Firestore");
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Cambios realizados"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      await user.updateDisplayName(_nameController.text.trim());
+
+      await FirebaseFirestore.instance
+          .collection("usuarios")
+          .doc(user.uid)
+          .set({
+            "nombre": _nameController.text.trim(),
+            "telefono": _phoneController.text.trim(),
+            "email": user.email,
+          }, SetOptions(merge: true))
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: () {
+              throw Exception("Timeout al guardar datos");
+            },
+          );
+      print("Guardado exitoso");
+
+      if (!mounted) return;
+
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Datos guardados exitosamente"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      navigator.pop();
+    } catch (e) {
+      print("Error: $e");
+      if (!mounted) return;
+
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     //Usuario actual
     final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -77,7 +109,6 @@ class _EditarPerfilState extends State<EditarPerfil> {
         padding: const EdgeInsets.all(50),
         child: Form(
           key: _formKey,
-
           child: Column(
             children: [
               CircleAvatar(
@@ -124,21 +155,8 @@ class _EditarPerfilState extends State<EditarPerfil> {
                 ),
                 onPressed: () async {
                   final form = _formKey.currentState;
-
                   if (form != null && form.validate()) {
-                    //Guardamos la ruta antes de cualquier delay
-                    final navigator = Navigator.of(context);
-
-                    await guardar(); // Espera a que termine de subir a Firestore
-
-                    //Pequeño delay para asegurar que la nube procesó el cambio
-                    await Future.delayed(const Duration(milliseconds: 300));
-
-                    if (!mounted) return;
-                    navigator.pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const Principal()),
-                      (route) => false,
-                    );
+                    await guardar();
                   }
                 },
                 child: const Text("Guardar cambios"),

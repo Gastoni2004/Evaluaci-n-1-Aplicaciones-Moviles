@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +16,7 @@ class _MyCustomFormState extends State<MyCustomForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _passwordVisible = false;
 
   @override
   void dispose() {
@@ -75,20 +75,33 @@ class _MyCustomFormState extends State<MyCustomForm> {
                   const SizedBox(height: 20),
                   TextFormField(
                     controller: _passwordController,
+                    obscureText: !_passwordVisible,
                     style: TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Constraseña',
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(
                         Icons.password_outlined,
                         color: Colors.white,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _passwordVisible = !_passwordVisible;
+                          });
+                        },
                       ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Por favor ingrese texto';
                       }
-
                       if (value.length < 6) {
                         return 'Por favor ingrese texto';
                       }
@@ -99,6 +112,7 @@ class _MyCustomFormState extends State<MyCustomForm> {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
+                      FocusScope.of(context).unfocus();
                       fnIniciarSesion(
                         _emailController.text,
                         _passwordController.text,
@@ -159,7 +173,6 @@ class _MyCustomFormState extends State<MyCustomForm> {
 
   void fnIniciarSesion(String email, String password) async {
     if (email.trim().isEmpty || password.trim().isEmpty) {
-      //Valida campos vacíos
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Por favor, completa todos los campos"),
@@ -168,47 +181,88 @@ class _MyCustomFormState extends State<MyCustomForm> {
       );
       return;
     }
+
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        //Intenta iniciar sesión con Firebase
-        email: email,
-        password: password,
+        email: email.trim(),
+        password: password.trim(),
       );
 
-      //Si funciona, muestra alerta de éxito
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Inicio de sesión exitioso"),
-            content: Text("Bienvenido a la apliación"),
+      User? user = credential.user;
+
+      if (user == null) {
+        throw Exception("Usuario no encontrado");
+      }
+
+      await user.reload();
+      user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        throw Exception("Error al actualizar usuario");
+      }
+
+      //Bloqueo si no esta verificado
+      if (!user.emailVerified) {
+        await FirebaseAuth.instance.signOut();
+
+        if (!mounted) return;
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Correo no verificado"),
+            content: const Text(
+              "Debes verificar tu correo antes de iniciar sesión. ¿Quieres que te reenviemos el enlace?",
+            ),
             actions: [
               TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Principal()),
-                  );
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await reenviarVerificacion();
                 },
-                child: Text("ok"),
+                child: const Text("Reenviar enlace"),
               ),
             ],
-          );
-        },
+          ),
+        );
+
+        return;
+      }
+
+      //Acceso si esta verfificado
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Principal()),
       );
     } on FirebaseAuthException catch (e) {
+      String mensaje = "Error de autenticación";
+
       if (e.code == 'user-not-found') {
-        print('No user found for that email.');
+        mensaje = "Usuario no encontrado";
       } else if (e.code == 'wrong-password') {
-        print('Wrong password provided for that user.');
+        mensaje = "Contraseña incorrecta";
+      } else if (e.code == 'invalid-email') {
+        mensaje = "Correo inválido";
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
     }
   }
 
   Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
-      //Google Sign-In
       final googleSignIn = GoogleSignIn(
         serverClientId:
             '470914911392-aepleg72ertndomipb7hj95o5n51nr8m.apps.googleusercontent.com',
@@ -219,7 +273,6 @@ class _MyCustomFormState extends State<MyCustomForm> {
 
       if (googleUser == null) return null;
 
-      //Auth Google
       final googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
@@ -232,7 +285,6 @@ class _MyCustomFormState extends State<MyCustomForm> {
         credential,
       );
 
-      //Navegación SEGURA
       if (!context.mounted) return null;
 
       Navigator.pushAndRemoveUntil(
@@ -245,6 +297,32 @@ class _MyCustomFormState extends State<MyCustomForm> {
     } catch (e) {
       debugPrint("ERROR GOOGLE SIGN-IN: $e");
       return null;
+    }
+  }
+
+  Future<void> reenviarVerificacion() async {
+    try {
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      await credential.user?.sendEmailVerification();
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Correo reenviado, Revisa tu bandeja."),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al reenviar el correo."),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

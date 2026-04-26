@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -63,7 +64,7 @@ class _RegistroState extends State<Registro> {
 
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor ingrese texto';
+                    return 'Ingrese su nombre de usuario';
                   }
                   return null;
                 },
@@ -171,7 +172,7 @@ class _RegistroState extends State<Registro> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    fnResgistro(
+                    fnRegistro(
                       _emailController.text,
                       _passwordController.text,
                       _userController.text,
@@ -187,47 +188,44 @@ class _RegistroState extends State<Registro> {
     );
   }
 
-  void fnResgistro(String email, String password, String nombre) async {
-    if (nombre.trim().isEmpty ||
-        email.trim().isEmpty ||
-        password.trim().isEmpty) {
+  Future<void> fnRegistro(String email, String password, String nombre) async {
+    try {
+      //Crea la cuenta en Firebase
+      UserCredential credencial = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      //Guarda el nombre en Firestore
+      await FirebaseFirestore.instance
+          .collection("usuarios")
+          .doc(credencial.user!.uid)
+          .set({"nombre": nombre, "telefono": "", "email": email});
+
+      //Manda el link al correo
+      await credencial.user?.sendEmailVerification();
+
+      //Cierra la sesión
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Por favor, completa todos los campos"),
+          content: Text(
+            "¡Cuenta creada! Revisa tu correo para verificarla antes de entrar.",
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error al registrar: ${e.message}"),
           backgroundColor: Colors.red,
         ),
       );
-      return;
-    }
-    try {
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password)
-          .then((UserCredential) async {
-            await FirebaseAuth.instance.currentUser!.updateDisplayName(nombre);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Registro exitoso"),
-                backgroundColor: Colors.red,
-              ),
-            );
-            Navigator.pushReplacementNamed(context, '/');
-          })
-          .catchError((error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error.message),
-                backgroundColor: Colors.red,
-              ),
-            );
-          });
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') {
-        print('The password provided is too weak.');
-      } else if (e.code == 'email-already-in-use') {
-        print('The account already exists for that email.');
-      }
-    } catch (e) {
-      print(e);
     }
   }
 }
