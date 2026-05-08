@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ class _MyCustomFormState extends State<MyCustomForm> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _passwordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -27,147 +29,171 @@ class _MyCustomFormState extends State<MyCustomForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFF1F2C34),
+    return Stack(
+      children: [
+        Scaffold(
+          resizeToAvoidBottomInset: false,
+          backgroundColor: const Color(0xFF1F2C34),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(50),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  const Icon(
-                    Icons.account_circle_outlined,
-                    size: 90,
-                    color: Colors.white,
-                  ),
-                  Text(
-                    'Iniciar Sesión',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  //Usuario
-                  TextFormField(
-                    controller: _emailController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Correo eléctronico',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email, color: Colors.white),
-                    ),
-
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese texto';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: !_passwordVisible,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(
-                        Icons.password_outlined,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(50),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      const Icon(
+                        Icons.account_circle_outlined,
+                        size: 90,
                         color: Colors.white,
                       ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _passwordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                          color: Colors.white70,
+                      Text(
+                        'Iniciar Sesión',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _passwordVisible = !_passwordVisible;
-                          });
+                      ),
+                      const SizedBox(height: 10),
+
+                      //Usuario
+                      TextFormField(
+                        controller: _emailController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Correo eléctronico',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email, color: Colors.white),
+                        ),
+
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor ingrese texto';
+                          }
+                          return null;
                         },
                       ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese texto';
-                      }
-                      if (value.length < 6) {
-                        return 'Por favor ingrese texto';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      FocusScope.of(context).unfocus();
-                      fnIniciarSesion(
-                        _emailController.text,
-                        _passwordController.text,
-                      );
-                    },
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text("OR", style: TextStyle(color: Colors.white)),
-                  const SizedBox(height: 5),
-                  ElevatedButton.icon(
-                    onPressed: () => signInWithGoogle(context),
-
-                    icon: Image.asset('assets/images/google.png', height: 24),
-                    label: const Text("Continuar con Google"),
-                  ),
-
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const Contrasena(),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_passwordVisible,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(
+                            Icons.password_outlined,
+                            color: Colors.white,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
+                          ),
                         ),
-                      );
-                    },
-                    child: const Text(
-                      'Restablecer contraseña',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor ingrese texto';
+                          }
+                          if (value.length < 6) {
+                            return 'Por favor ingrese texto';
+                          }
+                          return null;
+                        },
+                      ),
 
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const Registro(),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                FocusScope.of(context).unfocus();
+                                fnIniciarSesion(
+                                  _emailController.text,
+                                  _passwordController.text,
+                                );
+                              },
+
+                        child: const Text(
+                          'Login',
+                          style: TextStyle(color: Colors.black),
                         ),
-                      );
-                    },
-                    child: const Text(
-                      'Registrarse',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text("OR", style: TextStyle(color: Colors.white)),
+                      const SizedBox(height: 5),
+                      ElevatedButton.icon(
+                        onPressed: () => signInWithGoogle(context),
+
+                        icon: Image.asset(
+                          'assets/images/google.png',
+                          height: 24,
+                        ),
+                        label: const Text("Continuar con Google"),
+                      ),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (context) => const Contrasena(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Restablecer contraseña',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (context) => const Registro(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Registrarse',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
+        if (_isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.5),
+            child: const Center(
+              child: SizedBox(
+                height: 60,
+                width: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 5,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -181,7 +207,7 @@ class _MyCustomFormState extends State<MyCustomForm> {
       );
       return;
     }
-
+    setState(() => _isLoading = true);
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email.trim(),
@@ -235,7 +261,14 @@ class _MyCustomFormState extends State<MyCustomForm> {
 
       //Acceso si esta verfificado
       if (!mounted) return;
-
+      await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user.uid)
+          .set({
+            'uid': user.uid,
+            'nombre': user.displayName ?? 'Sin nombre',
+            'email': user.email,
+          });
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const Principal()),
@@ -258,6 +291,8 @@ class _MyCustomFormState extends State<MyCustomForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -286,6 +321,15 @@ class _MyCustomFormState extends State<MyCustomForm> {
       );
 
       if (!context.mounted) return null;
+
+      await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(result.user!.uid)
+          .set({
+            'uid': result.user!.uid,
+            'nombre': result.user!.displayName ?? 'Sin nombre',
+            'email': result.user!.email,
+          });
 
       Navigator.pushAndRemoveUntil(
         context,

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:math';
@@ -30,6 +32,8 @@ class MobileScannerSimple extends StatefulWidget {
 class _MobileScannerSimpleState extends State<MobileScannerSimple> {
   Barcode? _barcode;
 
+  bool _isLoading = false;
+
   Widget _barcodePreview(Barcode? value) {
     if (value == null) {
       return const Text(
@@ -54,33 +58,48 @@ class _MobileScannerSimpleState extends State<MobileScannerSimple> {
     }
   }
 
-  void azar() {
-    List<Map<String, String>> disponibles = [];
+  Future<void> azar() async {
+    setState(() => _isLoading = true);
 
-    for (var h in herramienta) {
-      bool yaEsta = false;
-      for (var n in nueva) {
-        if (h['id'] == n['id']) {
-          yaEsta = true;
-        }
-      }
-      if (yaEsta == false) {
-        disponibles.add(h);
-      }
-    }
+    await Future.delayed(const Duration(seconds: 1));
 
-    if (disponibles.isEmpty) {
+    var elegida = herramienta[Random().nextInt(herramienta.length)];
+
+    var query = await FirebaseFirestore.instance
+        .collection('herramientas_en_uso')
+        .where('id', isEqualTo: elegida['id'])
+        .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+        .get();
+
+    if (query.docs.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay más herramientas en el catálogo')),
+        const SnackBar(
+          content: Text('Esta herramienta ya está en uso'),
+          backgroundColor: Colors.orange,
+        ),
       );
-      Navigator.pop(context);
+
+      setState(() => _isLoading = false);
       return;
     }
 
-    setState(() {
-      var elegida = disponibles[Random().nextInt(disponibles.length)];
-      nueva.add(elegida);
+    await FirebaseFirestore.instance.collection('herramientas_en_uso').add({
+      'id': elegida['id'],
+      'nombre': elegida['nombre'],
+      'fecha': DateTime.now(),
+      'uid': FirebaseAuth.instance.currentUser!.uid,
+      'usuario': FirebaseAuth.instance.currentUser!.email,
     });
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Herramienta Registrada'),
+        backgroundColor: Colors.green,
+      ),
+    );
 
     Navigator.pop(context);
   }
@@ -103,13 +122,33 @@ class _MobileScannerSimpleState extends State<MobileScannerSimple> {
                 children: [
                   Expanded(child: Center(child: _barcodePreview(_barcode))),
                   ElevatedButton(
-                    onPressed: azar,
-                    child: Icon(Icons.add, size: 30, color: Color(0xFF1F2C34)),
+                    onPressed: _isLoading ? null : azar,
+                    child: _isLoading
+                        ? const SizedBox(width: 20, height: 20)
+                        : const Icon(
+                            Icons.add,
+                            size: 30,
+                            color: Color(0xFF1F2C34),
+                          ),
                   ),
                 ],
               ),
             ),
           ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.5),
+              child: const Center(
+                child: SizedBox(
+                  height: 60,
+                  width: 60,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 5,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

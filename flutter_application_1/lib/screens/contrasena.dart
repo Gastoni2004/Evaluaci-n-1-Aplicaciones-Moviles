@@ -38,13 +38,19 @@ class _ContrasenaState extends State<Contrasena> {
               const SizedBox(height: 50),
 
               Text(
-                'Ingrese su correo electrónico para restablecer la constraseña',
+                'Restablecer contraseña',
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: 25,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
+              const SizedBox(height: 35),
+              Text(
+                'Ingresa tu correo para restablecer tu contraseña',
+                style: TextStyle(fontSize: 20, color: Colors.white),
+              ),
+
               const SizedBox(height: 50),
               TextFormField(
                 controller: _emailController,
@@ -52,6 +58,7 @@ class _ContrasenaState extends State<Contrasena> {
                 decoration: const InputDecoration(
                   labelText: 'Correo Electrónico',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email, color: Colors.white),
                 ),
                 validator: (value) {
                   if (value == null || !value.contains('@')) {

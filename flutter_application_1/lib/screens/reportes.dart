@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gestor_de_herramientas/screens/perfil.dart';
@@ -10,10 +11,6 @@ class reportes extends StatefulWidget {
   @override
   State<reportes> createState() => _reportesState();
 }
-
-List<String> nueva = [];
-
-final List<Map<String, String>> listaReportes = [];
 
 class _reportesState extends State<reportes> {
   @override
@@ -47,47 +44,68 @@ class _reportesState extends State<reportes> {
         ],
       ),
 
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: listaReportes.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.black, width: 1),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    tileColor: const Color(0xFF1F2C34),
-                    title: Text(
-                      listaReportes[index]['nombre']!,
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Id: ${listaReportes[index]['id']!}",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        Text(
-                          "Descripción: ${listaReportes[index]['reporte']!}",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    trailing: Text(
-                      "Fecha: ${ahora.year}-${ahora.month}-${ahora.day}",
-                      style: TextStyle(color: Colors.white),
-                    ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('reportes')
+            .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .snapshots(),
+
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No hay reportes',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          var docs = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              var data = docs[index];
+              DateTime fecha = (data['fecha'] as Timestamp).toDate();
+
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(color: Colors.black, width: 1),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                  tileColor: const Color(0xFF1F2C34),
+                  title: Text(
+                    "${data['nombre']}",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Id: ${data['idHerramienta']}",
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      Text(
+                        "Descripción: ${data['descripcion']}",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  trailing: Text(
+                    "Fecha: ${fecha.day}/${fecha.month} ${fecha.hour}:${fecha.minute}",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

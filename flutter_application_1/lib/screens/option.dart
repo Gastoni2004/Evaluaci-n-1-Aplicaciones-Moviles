@@ -23,7 +23,7 @@ class _PrincipalState extends State<Principal> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B141B),
-      body: _paginas[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _paginas),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.white,
         backgroundColor: const Color(0xFF1F2C34),

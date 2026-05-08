@@ -16,6 +16,7 @@ class _RegistroState extends State<Registro> {
   final _passwordController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _passwordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,171 +29,202 @@ class _RegistroState extends State<Registro> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFF0B141B),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFF0B141B),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: Container(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 100,
+                ),
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  color: Color(0xFF1F2C34),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 9),
+                      Text(
+                        'Registrarse',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      // Usuario
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _userController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Usuario',
+                          border: OutlineInputBorder(),
+                        ),
 
-      body: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 100),
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Color(0xFF1F2C34),
-          borderRadius: BorderRadius.circular(20),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingrese su nombre de usuario';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      //Email
+                      TextFormField(
+                        controller: _emailController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Correo Electrónico',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Ingrese su correo';
+                          if (!value.endsWith('@gmail.com'))
+                            return 'Formato xxxx@gmail.com';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      //Contraseña
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_passwordVisible,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          border: OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Campo obligatorio';
+                          }
+                          if (value.length < 8) {
+                            return 'Mínimo 8 caracteres';
+                          }
+                          if (!value.contains(RegExp(r'[A-Z]'))) {
+                            return 'Falta una Mayúscula';
+                          }
+                          if (!value.contains(RegExp(r'[a-z]'))) {
+                            return 'Falta una Minúscula';
+                          }
+                          if (!value.contains(RegExp(r'[0-9]'))) {
+                            return 'Falta un Número';
+                          }
+                          if (!value.contains(
+                            RegExp(r'[!@#$%^&*(),.?":{}|<>]'),
+                          )) {
+                            return 'Falta un Símbolo';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+                      //Confirmación de contraseña
+                      TextFormField(
+                        controller: _confirmPassController,
+                        obscureText: !_passwordVisible,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Confirmar Contraseña',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor, confirma tu contraseña';
+                          }
+                          if (value != _passwordController.text)
+                            return 'Las contraseñas no coinciden';
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      //Botón de registro
+                      ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                if (_formKey.currentState!.validate()) {
+                                  fnRegistro(
+                                    _emailController.text,
+                                    _passwordController.text,
+                                    _userController.text,
+                                  );
+                                }
+                              },
+
+                        child: const Text('Registrarse'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              const SizedBox(height: 9),
-              Text(
-                'Registrarse',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
+        if (_isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.5),
+            child: const Center(
+              child: SizedBox(
+                height: 60,
+                width: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 5,
                   color: Colors.white,
                 ),
               ),
-              // Usuario
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _userController,
-                style: TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Usuario',
-                  border: OutlineInputBorder(),
-                ),
-
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingrese su nombre de usuario';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              //Email
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Correo Electrónico',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Ingrese su correo';
-                  if (!value.endsWith('@gmail.com'))
-                    return 'Formato xxxx@gmail.com';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              //Contraseña
-              TextFormField(
-                controller: _passwordController,
-                obscureText: !_passwordVisible,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _passwordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.white70,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _passwordVisible = !_passwordVisible;
-                      });
-                    },
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obligatorio';
-                  }
-                  if (value.length < 8) {
-                    return 'Mínimo 8 caracteres';
-                  }
-                  if (!value.contains(RegExp(r'[A-Z]'))) {
-                    return 'Falta una Mayúscula';
-                  }
-                  if (!value.contains(RegExp(r'[a-z]'))) {
-                    return 'Falta una Minúscula';
-                  }
-                  if (!value.contains(RegExp(r'[0-9]'))) {
-                    return 'Falta un Número';
-                  }
-                  if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-                    return 'Falta un Símbolo';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-              //Confirmación de contraseña
-              TextFormField(
-                controller: _confirmPassController,
-                obscureText: !_passwordVisible,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Confirmar Contraseña',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _passwordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.white70,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _passwordVisible = !_passwordVisible;
-                      });
-                    },
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, confirma tu contraseña';
-                  }
-                  if (value != _passwordController.text)
-                    return 'Las contraseñas no coinciden';
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              //Botón de registro
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    fnRegistro(
-                      _emailController.text,
-                      _passwordController.text,
-                      _userController.text,
-                    );
-                  }
-                },
-                child: const Text('Registrarse'),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+      ],
     );
   }
 
   Future<void> fnRegistro(String email, String password, String nombre) async {
+    setState(() => _isLoading = true);
     try {
       //Crea la cuenta en Firebase
       UserCredential credencial = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
+
+      await credencial.user?.updateDisplayName(nombre);
 
       //Guarda el nombre en Firestore
       await FirebaseFirestore.instance
@@ -226,6 +258,10 @@ class _RegistroState extends State<Registro> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }

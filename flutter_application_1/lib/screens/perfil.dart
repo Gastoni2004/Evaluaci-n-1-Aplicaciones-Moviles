@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'editarper.dart';
+import 'package:gestor_de_herramientas/screens/login_screen.dart';
 
 class PerfilUsuario extends StatefulWidget {
   const PerfilUsuario({super.key});
@@ -143,11 +144,43 @@ class _PerfilUsuarioState extends State<PerfilUsuario> {
   }
 
   Future<void> cerrarSesion() async {
+    bool confirmar =
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar'),
+            content: const Text('¿Cerrar sesión?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sí'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmar) return;
+
     await GoogleSignIn().signOut();
     await FirebaseAuth.instance.signOut();
 
     if (mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const MyCustomForm(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 1000),
+        ),
+        (route) => false,
+      );
     }
   }
 }
